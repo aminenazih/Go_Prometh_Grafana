@@ -1,0 +1,7 @@
+version: "1"
+packages:
+  - name: "db"
+    path: "./shared/db"
+    queries: "./sql/queries.sql"
+    schema: "./sql/schema.sql"
+    engine: "sqlite"

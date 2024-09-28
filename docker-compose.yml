@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  producer:
+    build:
+      context: .
+      dockerfile: ./producer/Dockerfile
+    ports:
+      - "9091:9091"
+    networks:
+      - monitoring-network
+    depends_on:
+      - consumer
+
+  consumer:
+    build:
+      context: .
+      dockerfile: ./consumer/Dockerfile
+    ports:
+      - "9092:9092"
+      - "6062:6062"  # For pprof access
+    networks:
+      - monitoring-network
+    volumes:
+      - consumer-db:/app  # Use Docker-managed volume for the database
+    command: >
+      /bin/sh -c "./consumer"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9092/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5  
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitoring-network
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring-network
+
+volumes:
+  consumer-db:  # Define Docker-managed volume for the tasks.db file
+
+networks:
+  monitoring-network:
+    driver: bridge

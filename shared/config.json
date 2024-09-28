@@ -1,0 +1,9 @@
+{
+  "DatabaseURL": "postgres://user:password@localhost:5432/taskdb",
+  "LogLevel": "info",
+  "ProducerPort": 8081,
+  "ConsumerPort": 8082,
+  "MaxBacklog": 100,
+  "PrometheusPort": 9090,
+  "ConsumerAddress": "localhost:50051" 
+}
