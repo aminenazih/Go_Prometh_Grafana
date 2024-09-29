@@ -13,7 +13,7 @@ import (
 
 	"golang-assessment/golang-assessment/proto"
 
-	_ "net/http/pprof" // for profiling
+	_ "net/http/pprof"
 
 	_ "github.com/glebarez/sqlite"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -26,7 +26,6 @@ import (
 
 var version = "1.0.0"
 
-// Task struct to hold task data
 type Task struct {
 	ID        int
 	Type      int
@@ -36,7 +35,6 @@ type Task struct {
 	UpdatedAt time.Time
 }
 
-// TaskServiceServer struct implementing the gRPC service
 type TaskServiceServer struct {
 	db *sql.DB
 	proto.UnimplementedTaskServiceServer
@@ -58,28 +56,25 @@ var taskState = prometheus.NewCounterVec(
 	[]string{"state"},
 )
 
-var limiter = rate.NewLimiter(1, 5) // 1 task per second with a burst of 5
+var limiter = rate.NewLimiter(1, 5)
 
 func init() {
 	prometheus.MustRegister(tasksProcessed)
 	prometheus.MustRegister(taskState)
 }
 
-// NewTaskServiceServer initializes the TaskServiceServer with a DB connection
 func NewTaskServiceServer(db *sql.DB) *TaskServiceServer {
 	return &TaskServiceServer{db: db}
 }
 
-// SaveTask saves the task to the database
 func (s *TaskServiceServer) SaveTask(task *Task) error {
 	_, err := s.db.Exec("INSERT INTO tasks (type, value, state, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
 		task.Type, task.Value, task.State, task.CreatedAt, task.UpdatedAt)
 	return err
 }
 
-// SendTask implements the gRPC method to receive tasks from the producer
 func (s *TaskServiceServer) SendTask(ctx context.Context, req *proto.TaskRequest) (*proto.TaskResponse, error) {
-	// Apply rate limiting
+
 	if err := limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
@@ -92,16 +87,11 @@ func (s *TaskServiceServer) SendTask(ctx context.Context, req *proto.TaskRequest
 		UpdatedAt: time.Now(),
 	}
 
-	// Increment the state count for received tasks
-	logrus.Infof("Tracking state: %s", task.State)
 	taskState.With(prometheus.Labels{"state": task.State}).Inc()
 
-	// Simulate task processing
 	time.Sleep(time.Duration(task.Value) * time.Millisecond)
 	task.State = "done"
 
-	// Increment the state count for done tasks
-	logrus.Infof("Tracking state: %s", task.State)
 	taskState.With(prometheus.Labels{"state": task.State}).Inc()
 
 	err := s.SaveTask(&task)
@@ -110,7 +100,6 @@ func (s *TaskServiceServer) SendTask(ctx context.Context, req *proto.TaskRequest
 		return nil, fmt.Errorf("failed to save task: %v", err)
 	}
 
-	// Track the processed task in Prometheus
 	tasksProcessed.With(prometheus.Labels{"type": strconv.Itoa(task.Type)}).Inc()
 
 	logrus.Infof("Task saved: %+v", task)
@@ -120,7 +109,6 @@ func (s *TaskServiceServer) SendTask(ctx context.Context, req *proto.TaskRequest
 	}, nil
 }
 
-// runMigrations runs database migrations using golang-migrate
 func runMigrations(db *sql.DB) {
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS tasks (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,27 +121,23 @@ func runMigrations(db *sql.DB) {
 	if err != nil {
 		log.Fatalf("Failed to create tasks table: %v", err)
 	}
+
 	log.Println("Tasks table created or already exists.")
 }
 
 func main() {
-	// Check for -version flag
 	if len(os.Args) > 1 && os.Args[1] == "-version" {
 		fmt.Println("Version:", version)
 		return
 	}
 
-	// Set up logging
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetLevel(logrus.InfoLevel)
 
-	// Start profiling
 	go func() {
-		log.Println("Starting pprof at localhost:6062")
 		log.Println(http.ListenAndServe("localhost:6062", nil))
 	}()
 
-	// Set up database connection
 	dbPath := "/app/tasks.db"
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -161,7 +145,6 @@ func main() {
 	}
 	defer db.Close()
 
-	// Ensure the database file exists
 	_, err = os.Stat(dbPath)
 	if os.IsNotExist(err) {
 		file, err := os.Create(dbPath)
@@ -174,16 +157,13 @@ func main() {
 		log.Fatalf("Error checking the database file: %v", err)
 	}
 
-	// Run database migrations
 	runMigrations(db)
 
-	// Set up Prometheus metrics server
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		log.Fatal(http.ListenAndServe("0.0.0.0:9092", nil)) // Exposing Prometheus metrics at port 9092
+		log.Fatal(http.ListenAndServe("0.0.0.0:9092", nil))
 	}()
 
-	// Set up gRPC server
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatal("Failed to listen on port 50051: ", err)
@@ -192,16 +172,13 @@ func main() {
 	grpcServer := grpc.NewServer()
 	taskServiceServer := NewTaskServiceServer(db)
 
-	// Register the TaskServiceServer with the gRPC server
 	proto.RegisterTaskServiceServer(grpcServer, taskServiceServer)
 
 	logrus.Info("gRPC server is running on port 50051")
 
-	// Start the gRPC server
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Failed to serve gRPC server: %v", err)
 	}
 
-	// Keep the service running
 	select {}
 }

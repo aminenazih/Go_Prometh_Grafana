@@ -22,7 +22,7 @@ services:
     networks:
       - monitoring-network
     volumes:
-      - consumer-db:/app  # Use Docker-managed volume for the database
+      - consumer-db:/app  
     command: >
       /bin/sh -c "./consumer"
     healthcheck:
@@ -50,7 +50,7 @@ services:
       - monitoring-network
 
 volumes:
-  consumer-db:  # Define Docker-managed volume for the tasks.db file
+  consumer-db:  
 
 networks:
   monitoring-network:

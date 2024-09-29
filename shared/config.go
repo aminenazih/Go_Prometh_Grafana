@@ -6,7 +6,6 @@ import (
 	"os"
 )
 
-// Config holds the configuration for the producer
 type Config struct {
 	DatabaseURL     string `json:"DatabaseURL"`
 	LogLevel        string `json:"LogLevel"`
@@ -17,7 +16,6 @@ type Config struct {
 	ConsumerAddress string `json:"ConsumerAddress"`
 }
 
-// LoadConfig loads configuration from a JSON file
 func LoadConfig() (*Config, error) {
 	file, err := os.Open("../shared/config.json")
 	if err != nil {

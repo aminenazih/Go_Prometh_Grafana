@@ -43,8 +43,8 @@ The consumer exposes the following Prometheus metrics:
 The application supports CPU and memory profiling using `pprof`. To enable profiling:
 
 1. Start the consumer service.
-2. Access the profiling interface at `http://localhost:6060/debug/pprof/`.
+2. Access the profiling interface at `http://localhost:6062/debug/pprof/`.
 3. Use `go tool pprof` to analyze the profile data.
 
 ```bash
-go tool pprof http://localhost:6060/debug/pprof/profile
+go tool pprof http://localhost:6062/debug/pprof/profile
